@@ -1,14 +1,14 @@
 {
   "short_name": "Scorp",
   "name": "Scorp Controller",
-  "icons": [
+  "Icons": [
     {
-      "src": "https://raw.githubusercontent.com/kingdestiny1-prog/scorp/main/icon.png",
+      "src": "https://raw.githubusercontent.com/kingdestiny1-prog/scorp/main/Icon.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://raw.githubusercontent.com/kingdestiny1-prog/scorp/main/icon.png",
+      "src": "https://raw.githubusercontent.com/kingdestiny1-prog/scorp/main/Icon.png",
       "type": "image/png",
       "sizes": "512x512"
     }
