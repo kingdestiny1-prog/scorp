@@ -3,12 +3,12 @@
   "name": "Scorp Controller",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/kingdestiny1-prog/scorp/main/Icon.png",
+      "src": "Icon.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://raw.githubusercontent.com/kingdestiny1-prog/scorp/main/Icon.png",
+      "src": "Icon.png",
       "type": "image/png",
       "sizes": "512x512"
     }
