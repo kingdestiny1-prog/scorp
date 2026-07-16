@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>scorp Sound Controller</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-color: #1e1e1e;
+            --accent-green: #00ff66;
+            --accent-blue: #00d2ff;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            border: none;
+            color: black;
+            padding: 15px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 255, 102, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .btn-connect:active {
+            transform: scale(0.98);
+        }
+
+        .speaker-card {
+            background-color: var(--card-color);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            border-top: 4px solid #333;
+            transition: border-color 0.5s;
+        }
+
+        .speaker-card.green { border-color: var(--accent-green); }
+        .speaker-card.blue { border-color: var(--accent-blue); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ff3333;
+        }
+
+        .connected .status-dot {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--text-color);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .volume-display {
+            text-align: right;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .sync-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>scorp Controller</h1>
+    <div class="subtitle">Contrôle Multi-Enceintes Lumineuses</div>
+
+    <div class="container">
+        <!-- Bouton d'appairage -->
+        <button class="btn-connect" onclick="connectSpeaker()">🔗 Connecter une enceinte</button>
+
+        <!-- Enceinte Lumineuse Verte -->
+        <div class="speaker-card green" id="speaker1">
+            <div class="card-header">
+                <h3>Enceinte Lumineuse #1</h3>
+                <div class="status-dot"></div>
+            </div>
+            <div class="slider-container">
+                <input type="range" id="vol1" min="0" max="100" value="50" disabled oninput="updateVolume(1, this.value)">
+                <div class="volume-display" id="val1">--%</div>
+            </div>
+        </div>
+
+        <!-- Enceinte Lumineuse Bleue -->
+        <div class="speaker-card blue" id="speaker2">
+            <div class="card-header">
+                <h3>Enceinte Lumineuse #2</h3>
+                <div class="status-dot"></div>
+            </div>
+            <div class="slider-container">
+                <input type="range" id="vol2" min="0" max="100" value="50" disabled oninput="updateVolume(2, this.value)">
+                <div class="volume-display" id="val2">--%</div>
+            </div>
+        </div>
+
+        <!-- Contrôle global synchrone -->
+        <div class="sync-panel">
+            <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                <span>Synchroniser les deux volumes</span>
+                <input type="checkbox" id="sync-volumes" style="width: 20px; height: 20px;">
+            </label>
+        </div>
+    </div>
+
+    <script>
+        // UUIDs standardisés Bluetooth pour le contrôle du volume (Audio Control Service)
+        const AUDIO_SERVICE_UUID = '0000180f-0000-1000-8000-00805f9b34fb'; // Exemple générique (Battery/Audio standard)
+        const VOLUME_CHAR_UUID = '00002a19-0000-1000-8000-00805f9b34fb';  // À adapter selon le protocole de la puce
+
+        let connectedSpeakers = [];
+
+        async function connectSpeaker() {
+            try {
+                // Demande de recherche de périphériques audio à proximité
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [AUDIO_SERVICE_UUID]
+                });
+
+                console.log("Connexion à " + device.name);
+                const server = await device.gatt.connect();
+                
+                // Assignation à l'emplacement 1 ou 2 libre
+                let index = connectedSpeakers.length < 1 ? 1 : 2;
+                
+                if (connectedSpeakers.length >= 2) {
+                    alert("Deux enceintes sont déjà connectées !");
+                    return;
+                }
+
+                connectedSpeakers.push({ device, server, index });
+
+                // Mise à jour visuelle de l'interface
+                const card = document.getElementById(`speaker${index}`);
+                card.classList.add('connected');
+                
+                const slider = document.getElementById(`vol${index}`);
+                slider.disabled = false;
+                
+                const display = document.getElementById(`val${index}`);
+                display.innerText = slider.value + "%";
+
+                alert(`Enceinte ${index} connectée avec succès !`);
+
+            } catch (error) {
+                console.log("Erreur de connexion : " + error);
+                alert("Impossible de se connecter. Assurez-vous d'utiliser Chrome/Edge et d'activer le Bluetooth.");
+            }
+        }
+
+        function updateVolume(speakerId, value) {
+            document.getElementById(`val${speakerId}`).innerText = value + "%";
+
+            // Si le mode synchronisé est coché, on égalise l'autre slider
+            const isSynced = document.getElementById('sync-volumes').checked;
+            if (isSynced) {
+                const otherId = speakerId === 1 ? 2 : 1;
+                const otherSlider = document.getElementById(`vol${otherId}`);
+                if (!otherSlider.disabled) {
+                    otherSlider.value = value;
+                    document.getElementById(`val${otherId}`).innerText = value + "%";
+                    sendVolumeToDevice(otherId, value);
+                }
+            }
+
+            sendVolumeToDevice(speakerId, value);
+        }
+
+        async function sendVolumeToDevice(speakerId, volumePercent) {
+            const speaker = connectedSpeakers.find(s => s.index === speakerId);
+            if (!speaker) return;
+
+            try {
+                // Récupération du service et de la caractéristique de volume
+                const service = await speaker.server.getPrimaryService(AUDIO_SERVICE_UUID);
+                const characteristic = await service.getCharacteristic(VOLUME_CHAR_UUID);
+                
+                // Conversion du pourcentage 0-100 en octet (0x00 à 0xFF ou 0-100 selon la puce)
+                const data = new Uint8Array([volumePercent]);
+                await characteristic.writeValue(data);
+                console.log(`Volume envoyé à l'enceinte ${speakerId} : ${volumePercent}%`);
+            } catch (error) {
+                console.error("Échec de l'envoi de la commande de volume", error);
+            }
+        }
+    </script>
+</body>
+</html>
